@@ -58,3 +58,17 @@ document.addEventListener('keydown', (e) => {
 });
 
 // Calendário de disponibilidade e reserva: assets/js/booking.js
+
+// Botão "Copiar e-mail" da seção de contato.
+document.querySelectorAll('[data-copy]').forEach((btn) => {
+  const original = btn.textContent;
+  btn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(btn.dataset.copy);
+      btn.textContent = 'E-mail copiado';
+    } catch {
+      btn.textContent = btn.dataset.copy;
+    }
+    setTimeout(() => { btn.textContent = original; }, 2200);
+  });
+});
