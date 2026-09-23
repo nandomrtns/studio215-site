@@ -1,0 +1,54 @@
+name: Publicar no Instagram
+
+# Confere a fila de hora em hora e publica o que estiver aprovado e vencido.
+# O GitHub pode atrasar o cron em alguns minutos — irrelevante pra 1 post por semana.
+on:
+  schedule:
+    - cron: "7 * * * *"
+  workflow_dispatch:
+    inputs:
+      forcar:
+        description: "Slug do post para publicar agora, ignorando o horário (vazio = fluxo normal)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: instagram
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Publicar posts vencidos
+        env:
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          FORCAR: ${{ inputs.forcar }}
+        run: |
+          if [ -n "$FORCAR" ]; then
+            node social/scripts/publicar.mjs --forcar "$FORCAR"
+          else
+            node social/scripts/publicar.mjs
+          fi
+
+      # Roda mesmo se um post falhou, pra não perder o registro dos que saíram.
+      - name: Registrar o que foi publicado
+        if: always()
+        run: |
+          git add social/fila/*/publicado.json 2>/dev/null || true
+          git diff --cached --quiet && exit 0
+          git config user.name "studio215-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Instagram: registra posts publicados"
+          for i in 1 2 3; do git pull --rebase -q && git push -q && exit 0; sleep 5; done
+          exit 1

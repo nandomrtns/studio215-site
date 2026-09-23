@@ -1,0 +1,7 @@
+{
+  "tipo": "carrossel",
+  "publicar_em": "2026-09-30T19:00:00-03:00",
+  "aprovado": false,
+  "legenda": "Texto da legenda. Pastas que começam com _ são ignoradas pelo publicador.",
+  "midia": ["1.jpg", "2.jpg"]
+}
