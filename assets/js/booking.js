@@ -19,11 +19,15 @@ const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julh
 const WEEKDAYS = ['D','S','T','Q','Q','S','S'];
 const RESERVATION_ID_KEY = 'studio215_reservation_id';
 const PAYMENT_POLL_INTERVAL_MS = 4000;
+// Fora do ?preview=1, a reserva direta fecha no WhatsApp do Nando: o botão
+// leva as datas, hóspedes e o total já escritos na mensagem.
+const WHATSAPP_NUMBER = '5551991752139';
 
 const bookingWidget = document.getElementById('bookingWidget');
 const bookingWidgetTitle = document.getElementById('bookingWidgetTitle');
 const bookingWidgetCta = document.getElementById('bookingWidgetCta');
 const bookingSummary = document.getElementById('bookingSummary');
+const bookingWhatsapp = document.getElementById('bookingWhatsapp');
 
 const fieldCheckIn = document.getElementById('fieldCheckIn');
 const fieldCheckOut = document.getElementById('fieldCheckOut');
@@ -59,6 +63,8 @@ let blockedDays = new Set();
 let minNights = 2;
 let selection = { start: null, end: null };
 let guestCount = 1;
+let lastQuote = null;
+let availabilityFailed = false;
 let monthOffset = 0;
 let paymentPollTimer = null;
 let cardBrickController = null;
@@ -87,7 +93,14 @@ async function initBooking() {
         `Atualizado em ${d.toLocaleDateString('pt-BR')} às ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
     }
   } catch (err) {
-    calGrid.innerHTML = '<p class="cal-loading">Não consegui carregar a disponibilidade agora — chame no Instagram que a gente confirma na hora.</p>';
+    calGrid.innerHTML = '<p class="cal-loading">Não consegui carregar a disponibilidade agora — chame no WhatsApp que a gente confirma na hora.</p>';
+    // Sem disponibilidade o calendário não serve pra nada: o card vira direto
+    // o botão do WhatsApp em vez de abrir um modal vazio.
+    availabilityFailed = true;
+    if (!PREVIEW_MODE) {
+      if (bookingWidgetCta) bookingWidgetCta.hidden = true;
+      showWhatsappCta();
+    }
   }
 }
 
@@ -252,6 +265,7 @@ function setGuestCount(next) {
   guestsCountEl.textContent = String(guestCount);
   guestsValue.textContent = `${guestCount} hóspede${guestCount > 1 ? 's' : ''}`;
   guestsMinus.disabled = guestCount <= 1;
+  updateWhatsappLink();
   guestsPlus.disabled = guestCount >= MAX_GUESTS;
 }
 setGuestCount(1);
@@ -381,10 +395,17 @@ async function loadQuote() {
     const res = await fetch(`${API_BASE}/api/pricing?checkIn=${selection.start}&checkOut=${selection.end}`);
     if (!res.ok) throw new Error('pricing failed');
     const quote = await res.json();
+    lastQuote = quote;
     renderSummary(quote);
     showGuestForm();
   } catch (err) {
-    showError('Não consegui calcular o preço agora. Tenta de novo em instantes.');
+    if (PREVIEW_MODE) {
+      showError('Não consegui calcular o preço agora. Tenta de novo em instantes.');
+    } else {
+      // Sem preço, ainda dá pra fechar: as datas vão na mensagem do WhatsApp.
+      if (bookingWidgetCta) bookingWidgetCta.hidden = true;
+      showWhatsappCta();
+    }
   }
 }
 
@@ -407,20 +428,47 @@ function showGuestForm() {
 
   const submitBtn = guestForm.querySelector('button[type="submit"]');
   if (!PREVIEW_MODE) {
-    submitBtn.disabled = true;
-    if (bookingNote) {
-      bookingNote.hidden = false;
-      bookingNote.textContent = 'Reservas diretas abrindo em breve — chame no Instagram por enquanto.';
-    }
+    guestForm.hidden = true;
+    showWhatsappCta();
   } else {
     submitBtn.disabled = false;
     if (bookingNote) bookingNote.hidden = true;
   }
 }
 
+function formatDateNumeric(iso) {
+  const [y, m, d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function whatsappMessage() {
+  if (!selection.start || !selection.end) {
+    return 'Olá! Vi o site do Studio 215 e quero reservar.';
+  }
+  const nights = nightsBetween(selection.start, selection.end);
+  let msg = `Olá! Vi o site do Studio 215 e quero reservar de ${formatDateNumeric(selection.start)} a ${formatDateNumeric(selection.end)} ` +
+    `(${nights} noite${nights > 1 ? 's' : ''}), ${guestCount} hóspede${guestCount > 1 ? 's' : ''}.`;
+  if (lastQuote && lastQuote.totalCents) msg += ` O site mostrou total de ${formatBRL(lastQuote.totalCents)}.`;
+  return msg;
+}
+
+function updateWhatsappLink() {
+  if (!bookingWhatsapp) return;
+  bookingWhatsapp.href = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(whatsappMessage())}`;
+}
+
+function showWhatsappCta() {
+  updateWhatsappLink();
+  if (bookingWhatsapp) bookingWhatsapp.hidden = false;
+}
+
 function hideBookingSteps() {
+  lastQuote = null;
+  const keepWhatsapp = availabilityFailed && !PREVIEW_MODE;
+  if (bookingWhatsapp) bookingWhatsapp.hidden = !keepWhatsapp;
+  if (keepWhatsapp) updateWhatsappLink();
   if (bookingWidgetTitle) bookingWidgetTitle.hidden = false;
-  if (bookingWidgetCta) bookingWidgetCta.hidden = false;
+  if (bookingWidgetCta) bookingWidgetCta.hidden = keepWhatsapp;
   if (bookingSummary) bookingSummary.hidden = true;
   if (guestForm) guestForm.hidden = true;
   if (bookingNote) bookingNote.hidden = true;
@@ -627,7 +675,7 @@ function renderConfirmedSuccess(reservation) {
     <h3>Reserva confirmada!</h3>
     <p>${formatDateBR(reservation.checkIn)} — ${formatDateBR(reservation.checkOut)}</p>
     <p>Total pago: ${formatBRL(reservation.totalCents)}</p>
-    <p>Confirmamos por e-mail. Qualquer coisa, chama no Instagram.</p>
+    <p>Confirmamos por e-mail. Qualquer coisa, chama no WhatsApp.</p>
   `;
 }
 
@@ -651,7 +699,7 @@ function pollPaymentStatus(reservationId) {
       } else if (reservation.status === 'confirmed_conflict' || reservation.status === 'refunded') {
         stopPaymentPolling();
         showPaymentStatus(
-          'Essa data foi ocupada antes da confirmação do seu pagamento — o valor foi estornado automaticamente. Chame no Instagram que ajudamos a encontrar outra data.',
+          'Essa data foi ocupada antes da confirmação do seu pagamento — o valor foi estornado automaticamente. Chame no WhatsApp que ajudamos a encontrar outra data.',
           'error'
         );
         setPaymentMethodButtonsDisabled(true);

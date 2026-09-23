@@ -41,6 +41,9 @@ body {
 
 img { max-width: 100%; display: block; }
 
+/* O atributo hidden vence qualquer display de componente (.btn, .guest-form...). */
+[hidden] { display: none !important; }
+
 .wrap { max-width: 1240px; margin: 0 auto; padding: 0 32px; }
 
 a { color: inherit; text-decoration: none; }
@@ -557,6 +560,16 @@ figcaption {
 
 /* ---------- Disponibilidade — widget compacto (padrão Airbnb) ---------- */
 
+/* Seção inteira centralizada: título, widget e os passos que aparecem abaixo
+   dele (resumo, formulário, erro, confirmação) ficam no eixo da página. */
+.availability .wrap { text-align: center; }
+.availability .lede { margin-left: auto; margin-right: auto; }
+.availability .booking-widget,
+.availability .guest-form,
+.availability .booking-note,
+.availability .booking-error,
+.availability .booking-confirmation { margin-left: auto; margin-right: auto; text-align: left; }
+
 .booking-widget {
   margin-top: 32px;
   max-width: 400px;
@@ -1043,6 +1056,32 @@ figcaption {
 
 .btn-primary { background: var(--sage); color: var(--cream); }
 .btn-primary:hover { background: var(--sage-dark); }
+
+/* Verde oficial do WhatsApp (#25D366) pra ser reconhecido de cara. Texto em
+   tinta escura: branco sobre esse verde não passa contraste (≈2:1). */
+.btn-whatsapp { background: #25D366; color: var(--ink); justify-content: center; }
+.btn-whatsapp:hover { background: #1FBE5B; }
+.btn-whatsapp .wa-icon { width: 20px; height: 20px; flex: none; }
+
+.wa-float {
+  position: fixed;
+  right: max(20px, env(safe-area-inset-right));
+  bottom: max(20px, env(safe-area-inset-bottom));
+  z-index: 40; /* abaixo do header (50), menu mobile (45), modal e lightbox */
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: #25D366;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 6px 20px rgba(27,20,17,0.22);
+  transition: transform var(--dur-fast) var(--ease-smooth), background-color var(--dur-fast) var(--ease-smooth);
+}
+.wa-float .wa-icon { width: 30px; height: 30px; }
+.wa-float:hover { background: #1FBE5B; transform: scale(1.05); }
+.wa-float:active { transform: scale(0.95); }
+.wa-float:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
 
 .btn-secondary { background: transparent; color: var(--ink); border: 1px solid rgba(27,20,17,0.25); }
 .btn-secondary:hover { border-color: var(--ink); }
