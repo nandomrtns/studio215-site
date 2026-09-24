@@ -21,6 +21,8 @@ O GitHub Actions confere esta fila de hora em hora e publica o que venceu.
    - `publicar_em`: sempre com fuso (`-03:00`).
    - `aprovado`: **só vira `true` depois do OK do Nando.** Sem isso o post nunca sai.
    - Mídia de imagem precisa ser **JPEG** — a API não aceita PNG.
+   - `requer_livre` (opcional, para story de oferta relâmpago): `{"inicio": "AAAA-MM-DD", "fim": "AAAA-MM-DD"}`.
+     Se `assets/agenda.json` já mostrar alguma dessas noites ocupada, o post não sai.
 
 2. Commit + push no `main`. O GitHub Pages publica as mídias em
    `www.studio215poa.com.br/social/fila/…`, que é de onde o Instagram as busca.

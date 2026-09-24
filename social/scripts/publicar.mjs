@@ -39,6 +39,17 @@ async function existe(caminho) {
   }
 }
 
+// Story de oferta relâmpago leva "requer_livre": {"inicio", "fim"} no post.json. Se a
+// agenda do Airbnb (assets/agenda.json, atualizada aos 11 min de cada hora) já mostrar
+// alguma dessas noites ocupada, o story não sai: não se anuncia data que já foi vendida.
+const AGENDA = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "assets", "agenda.json");
+
+async function dataVendida({ inicio, fim }) {
+  if (!(await existe(AGENDA))) return false;
+  const { ocupado = [] } = JSON.parse(await readFile(AGENDA, "utf8"));
+  return ocupado.some((r) => r.inicio < fim && r.fim > inicio);
+}
+
 async function lerFila() {
   const pastas = (await readdir(FILA, { withFileTypes: true }))
     .filter((d) => d.isDirectory() && !d.name.startsWith("_"))
@@ -193,12 +204,19 @@ async function main() {
     process.exit(1);
   }
 
-  const vencidos = posts.filter(({ slug, post, publicado }) => {
+  for (const p of posts)
+    if (!p.publicado && p.post.requer_livre && (await dataVendida(p.post.requer_livre))) p.vendida = true;
+
+  const vencidos = posts.filter(({ slug, post, publicado, vendida }) => {
     if (publicado) return false;
     if (FORCAR) return slug === FORCAR;
     if (post.aprovado !== true) return false;
     const quando = Date.parse(post.publicar_em);
     if (quando > agora) return false;
+    if (vendida) {
+      console.warn(`${slug}: as datas de ${post.requer_livre.inicio} a ${post.requer_livre.fim} já estão ocupadas — não publico.`);
+      return false;
+    }
     if (agora - quando > ATRASO_MAXIMO_MS) {
       console.warn(`${slug}: atrasado mais de 24h — não publico sozinho. Use --forcar ${slug} se ainda fizer sentido.`);
       return false;

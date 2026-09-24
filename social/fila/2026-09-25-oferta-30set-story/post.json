@@ -1,0 +1,7 @@
+{
+  "tipo": "story",
+  "publicar_em": "2026-09-25T12:40:00-03:00",
+  "aprovado": true,
+  "requer_livre": { "inicio": "2026-09-30", "fim": "2026-10-04" },
+  "midia": ["story.jpg"]
+}
