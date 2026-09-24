@@ -15,6 +15,8 @@ const MONTHS_SHOWN = 2;
 const MAX_MONTH_OFFSET = 10; // janela navegável de 12 meses (offset + MONTHS_SHOWN)
 const AVAILABILITY_WINDOW_DAYS = 380; // cobre a janela de 12 meses inteira numa fetch só
 const MAX_GUESTS = 3;
+// Igual ao anúncio do Airbnb (mínimo de 1 noite).
+const MIN_NIGHTS = 1;
 const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const WEEKDAYS = ['D','S','T','Q','Q','S','S'];
 const RESERVATION_ID_KEY = 'studio215_reservation_id';
@@ -79,16 +81,18 @@ async function initBooking() {
   if (restored) return;
 
   try {
-    const res = await fetch(`${API_BASE}/api/availability?to=${addDaysIso(todayIso(), AVAILABILITY_WINDOW_DAYS)}`);
-    if (!res.ok) throw new Error('availability request failed');
+    // A agenda vem do próprio site: uma rotina do GitHub lê o calendário do Airbnb de
+    // hora em hora e grava só as datas ocupadas em assets/agenda.json. Sem servidor.
+    const res = await fetch('assets/agenda.json', { cache: 'no-cache' });
+    if (!res.ok) throw new Error('agenda request failed');
     const data = await res.json();
 
-    minNights = data.min_nights || 2;
-    blockedDays = expandBlockedRanges(data.blocked_ranges || []);
+    minNights = MIN_NIGHTS;
+    blockedDays = expandBlockedRanges((data.ocupado || []).map((r) => ({ start: r.inicio, end: r.fim })));
     renderCalendar();
 
-    if (data.last_airbnb_sync && calUpdated) {
-      const d = new Date(data.last_airbnb_sync);
+    if (data.atualizado_em && calUpdated) {
+      const d = new Date(data.atualizado_em);
       calUpdated.textContent =
         `Atualizado em ${d.toLocaleDateString('pt-BR')} às ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
     }
@@ -318,6 +322,13 @@ function renderCalendar() {
   if (calPrevBtn) calPrevBtn.disabled = monthOffset === 0;
   if (calNextBtn) calNextBtn.disabled = monthOffset >= MAX_MONTH_OFFSET;
 
+  // Com o check-in escolhido, o primeiro dia ocupado depois dele ainda serve de
+  // checkout: o hóspede sai de manhã e o próximo entra à tarde.
+  let checkoutOnly = null;
+  if (selection.start && !selection.end) {
+    checkoutOnly = [...blockedDays].filter((k) => k > selection.start).sort()[0] || null;
+  }
+
   let html = '';
   for (let m = 0; m < MONTHS_SHOWN; m++) {
     const monthDate = new Date(today.getFullYear(), today.getMonth() + monthOffset + m, 1);
@@ -339,7 +350,7 @@ function renderCalendar() {
 
       let cls = 'cal-day';
       if (isPast) cls += ' past';
-      else if (isBlocked) cls += ' booked';
+      else if (isBlocked && key !== checkoutOnly && key !== selection.end) cls += ' booked';
       else {
         cls += ' free selectable';
         if (selection.start === key) cls += ' range-start';
@@ -380,7 +391,7 @@ function onDayClick(dateKey) {
 
   const nights = nightsBetween(selection.start, dateKey);
   if (nights < minNights) {
-    showError(`Estadia mínima de ${minNights} noites.`);
+    showError(`Estadia mínima de ${minNights} noite${minNights > 1 ? 's' : ''}.`);
     return;
   }
 
@@ -391,6 +402,13 @@ function onDayClick(dateKey) {
 }
 
 async function loadQuote() {
+  // Fora do ?preview=1 o site não mostra preço: o valor sai na conversa do WhatsApp,
+  // já com a oferta do momento quando houver. Só as datas vão na mensagem.
+  if (!PREVIEW_MODE) {
+    if (bookingWidgetCta) bookingWidgetCta.hidden = true;
+    showWhatsappCta();
+    return;
+  }
   try {
     const res = await fetch(`${API_BASE}/api/pricing?checkIn=${selection.start}&checkOut=${selection.end}`);
     if (!res.ok) throw new Error('pricing failed');

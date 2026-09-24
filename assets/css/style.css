@@ -1079,6 +1079,35 @@ figcaption {
 .btn-whatsapp .wa-icon { width: 20px; height: 20px; flex: none; }
 
 
+.wa-float {
+  position: fixed;
+  right: max(20px, env(safe-area-inset-right));
+  bottom: max(20px, env(safe-area-inset-bottom));
+  z-index: 40; /* abaixo do header (50), menu mobile (45), modal e lightbox */
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: #25D366;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 6px 20px rgba(27,20,17,0.22);
+  transition: opacity 280ms var(--ease-smooth), visibility 0s linear 0s,
+    transform var(--dur-fast) var(--ease-smooth), background-color var(--dur-fast) var(--ease-smooth);
+}
+/* Some com fade enquanto o calendário está na tela: lá já existe o "Reservar pelo WhatsApp".
+   A visibilidade só troca depois do fade, para o botão não sumir de golpe nem ficar clicável invisível. */
+.wa-float.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 220ms var(--ease-smooth), visibility 0s linear 220ms;
+}
+.wa-float .wa-icon { width: 30px; height: 30px; }
+.wa-float:hover { background: #1FBE5B; transform: scale(1.05); }
+.wa-float:active { transform: scale(0.95); }
+.wa-float:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+
 .btn-secondary { background: transparent; color: var(--ink); border: 1px solid rgba(27,20,17,0.25); }
 .btn-secondary:hover { border-color: var(--ink); }
 

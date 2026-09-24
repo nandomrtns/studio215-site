@@ -72,3 +72,12 @@ document.querySelectorAll('[data-copy]').forEach((btn) => {
     setTimeout(() => { btn.textContent = original; }, 2200);
   });
 });
+
+// Botão flutuante do WhatsApp: sai com fade enquanto a seção do calendário está na tela.
+const waFloat = document.querySelector('.wa-float');
+const disponibilidade = document.getElementById('disponibilidade');
+if (waFloat && disponibilidade && 'IntersectionObserver' in window) {
+  new IntersectionObserver(([entrada]) => {
+    waFloat.classList.toggle('is-hidden', entrada.isIntersecting);
+  }, { threshold: 0.15 }).observe(disponibilidade);
+}
