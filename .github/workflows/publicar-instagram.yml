@@ -1,11 +1,12 @@
 name: Publicar no Instagram
 
-# Confere a fila de hora em hora, aos 41 minutos, e publica o que estiver aprovado e
-# vencido. Os posts saem às 8h40 (horário de Brasília) → o de 8h40 sai na rodada das 8h41.
-# O GitHub pode atrasar o cron em alguns minutos — irrelevante pra 1 post por semana.
+# Confere a fila a cada 10 minutos (aos :01, :11, :21, :31, :41, :51) e publica o que
+# estiver aprovado e vencido. Os posts são marcados para :40 → saem na rodada de :41.
+# Era de hora em hora, mas em set/2026 o GitHub rodou o cron só a cada 2–6 h (ele atrasa
+# e descarta execuções agendadas sob carga). Com mais rodadas, alguma passa perto do horário.
 on:
   schedule:
-    - cron: "41 * * * *"
+    - cron: "1-59/10 * * * *"
   workflow_dispatch:
     inputs:
       forcar:

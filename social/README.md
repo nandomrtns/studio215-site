@@ -1,7 +1,7 @@
 # Fila do Instagram (@studio215poa)
 
 Publicação direta pela API oficial do Instagram, sem ferramenta intermediária.
-O GitHub Actions confere esta fila de hora em hora e publica o que venceu.
+O GitHub Actions confere esta fila a cada 10 minutos e publica o que venceu.
 
 ## Como um post entra na fila
 
