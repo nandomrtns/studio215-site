@@ -19,6 +19,44 @@ if (burger && mobileMenu) {
   });
 }
 
+// Links do menu (#secao): em vez do corte seco, desliza até a seção.
+// Curva ease-in-out com duração proporcional à distância (600–1200 ms), e
+// qualquer gesto do usuário (roda, toque, tecla) interrompe na hora.
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+let scrollAnim = null;
+const cancelScrollAnim = () => { if (scrollAnim) { cancelAnimationFrame(scrollAnim); scrollAnim = null; } };
+['wheel', 'touchstart', 'keydown'].forEach((ev) =>
+  window.addEventListener(ev, cancelScrollAnim, { passive: true }));
+
+function smoothScrollTo(targetY) {
+  cancelScrollAnim();
+  const startY = window.scrollY;
+  const maxY = document.documentElement.scrollHeight - window.innerHeight;
+  const endY = Math.max(0, Math.min(targetY, maxY));
+  const dist = endY - startY;
+  if (reduceMotion.matches || Math.abs(dist) < 2) { window.scrollTo(0, endY); return; }
+  const duration = Math.min(1200, Math.max(600, Math.abs(dist) * 0.35));
+  const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  const t0 = performance.now();
+  const step = (now) => {
+    const t = Math.min(1, (now - t0) / duration);
+    window.scrollTo(0, startY + dist * ease(t));
+    scrollAnim = t < 1 ? requestAnimationFrame(step) : null;
+  };
+  scrollAnim = requestAnimationFrame(step);
+}
+
+document.querySelectorAll('a[href^="#"]').forEach((a) => {
+  const id = a.getAttribute('href').slice(1);
+  a.addEventListener('click', (e) => {
+    const target = id ? document.getElementById(id) : null;
+    if (id && !target) return;
+    e.preventDefault();
+    smoothScrollTo(target ? target.getBoundingClientRect().top + window.scrollY : 0);
+    history.pushState(null, '', id ? '#' + id : location.pathname);
+  });
+});
+
 // Carrossel da hero — Ken Burns + crossfade, 2s por foto
 const heroImgs = document.querySelectorAll('.hero-bg-img');
 if (heroImgs.length) {
@@ -73,11 +111,15 @@ document.querySelectorAll('[data-copy]').forEach((btn) => {
   });
 });
 
-// Botão flutuante do WhatsApp: sai com fade enquanto a seção do calendário está na tela.
+// Botão flutuante do WhatsApp: sai com fade enquanto o calendário ou o contato
+// (que já têm botão de WhatsApp próprio) estão na tela.
 const waFloat = document.querySelector('.wa-float');
-const disponibilidade = document.getElementById('disponibilidade');
-if (waFloat && disponibilidade && 'IntersectionObserver' in window) {
-  new IntersectionObserver(([entrada]) => {
-    waFloat.classList.toggle('is-hidden', entrada.isIntersecting);
-  }, { threshold: 0.15 }).observe(disponibilidade);
+const secoesComWhatsapp = ['disponibilidade', 'contato'].map((id) => document.getElementById(id)).filter(Boolean);
+if (waFloat && secoesComWhatsapp.length && 'IntersectionObserver' in window) {
+  const visiveis = new Set();
+  const obs = new IntersectionObserver((entradas) => {
+    entradas.forEach((e) => (e.isIntersecting ? visiveis.add(e.target) : visiveis.delete(e.target)));
+    waFloat.classList.toggle('is-hidden', visiveis.size > 0);
+  }, { threshold: 0.15 });
+  secoesComWhatsapp.forEach((el) => obs.observe(el));
 }

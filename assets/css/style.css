@@ -7,6 +7,8 @@
   --sage-dark: #4D5040;
   --wood: #C9A47C;
   --terracotta: #C48653;
+  --free: #CEDDB5;       /* dia livre no calendário: sálvia puxada pro verde */
+  --free-hover: #B9CB9C;
   --border: rgba(201, 164, 124, 0.3);
   --font-display: 'Lora', Georgia, 'Times New Roman', serif;
   --font-body: 'Karla', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -322,6 +324,11 @@ h2 {
   color: rgba(27,20,17,0.72);
   max-width: 560px;
   margin-bottom: 8px;
+}
+/* Quebra de linha editorial: cada frase numa linha no desktop, sem viúva.
+   No celular volta a fluir normal. */
+@media (min-width: 720px) {
+  .lede-line { display: block; }
 }
 
 /* ---------- Sobre ---------- */
@@ -793,26 +800,58 @@ figcaption {
   border-radius: 8px;
 }
 
-.cal-day.free { background: transparent; color: var(--ink); }
-.cal-day.booked { background: transparent; color: rgba(27,20,17,0.32); text-decoration: line-through; }
-.cal-day.past { color: rgba(27,20,17,0.2); }
+/* Livre = pastilha verde-sálvia cheia; ocupado = só o número, apagado e riscado.
+   O contraste vem do preenchimento, não da cor do texto: dá pra ler o mês
+   inteiro de relance. O padding + background-clip deixa um respiro entre as
+   pastilhas, e o intervalo selecionado volta a ser uma faixa contínua. */
+.cal-day.free {
+  background: var(--free);
+  background-clip: content-box;
+  padding: 2px;
+  color: var(--sage-dark);
+  font-weight: 700;
+}
+.cal-day.booked { background: transparent; color: rgba(27,20,17,0.25); text-decoration: line-through; }
+.cal-day.past { color: rgba(27,20,17,0.18); }
 .cal-day.empty { background: transparent; }
 
 .cal-day.selectable {
   cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease-smooth), color var(--dur-fast) var(--ease-smooth);
 }
-.cal-day.selectable:hover { background: rgba(108,111,94,0.16); }
+.cal-day.selectable:hover { background-color: var(--free-hover); }
 
-.cal-day.in-range { background: rgba(108,111,94,0.16); color: var(--ink); border-radius: 0; }
+.cal-day.in-range { background: var(--free-hover); background-clip: border-box; color: var(--sage-dark); border-radius: 0; }
 
 .cal-day.range-start,
 .cal-day.range-end {
   background: var(--sage);
+  background-clip: border-box;
   color: var(--cream);
   font-weight: 700;
   border-radius: 50%;
 }
+
+.cal-legend {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 18px;
+  font-size: 13px;
+  color: rgba(27,20,17,0.65);
+}
+.cal-legend-item { display: inline-flex; align-items: center; gap: 8px; }
+.cal-legend-swatch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  font-size: 11px;
+}
+.cal-legend-swatch--free { background: var(--free); color: var(--sage-dark); font-weight: 700; }
+.cal-legend-swatch--booked { color: rgba(27,20,17,0.3); text-decoration: line-through; }
 
 .cal-modal-footer {
   display: flex;
@@ -1029,8 +1068,9 @@ figcaption {
 /* ---------- Contato ---------- */
 
 .contact { text-align: center; }
-.contact h2 { max-width: 640px; margin: 0 auto 20px; }
-.contact .lede { max-width: 480px; margin: 0 auto 40px; }
+.contact h2 { margin: 0 auto 20px; }
+@media (min-width: 720px) { .contact h2 { white-space: nowrap; } }
+.contact .lede { max-width: 560px; margin: 0 auto 40px; }
 /* O e-mail é o destaque da seção: grande o bastante para ler e copiar à distância. */
 .contact-email {
   display: inline-block;
@@ -1046,6 +1086,7 @@ figcaption {
 }
 .contact-email:hover { color: var(--sage-dark); border-color: var(--sage); }
 .contact .contact-copy { display: flex; margin: 32px auto 0; }
+.contact .contact-wa { display: flex; width: fit-content; gap: 10px; margin: 14px auto 0; }
 
 .cta-row {
   display: flex;
@@ -1120,6 +1161,27 @@ footer {
 }
 footer img { width: 28px; height: auto; margin: 0 auto 12px; }
 footer p { font-family: var(--font-body); font-size: 12px; color: rgba(27,20,17,0.5); }
+.footer-credit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 6px;
+}
+.footer-credit a { color: rgba(27,20,17,0.72); text-decoration: none; transition: color var(--dur-fast) var(--ease-smooth); }
+.footer-credit a:hover { color: var(--ink); }
+.footer-credit-wa {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-left: 4px;
+  border-radius: 50%;
+  border: 1px solid rgba(27,20,17,0.18);
+}
+.footer-credit-wa:hover { border-color: #25D366; color: #1DA851 !important; }
+.footer-credit-wa .wa-icon { width: 14px; height: 14px; }
 
 /* ---------- Lightbox ---------- */
 
