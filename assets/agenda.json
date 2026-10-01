@@ -1,5 +1,5 @@
 {
-  "atualizado_em": "2026-09-30T06:39:31.037Z",
+  "atualizado_em": "2026-10-01T05:46:02.101Z",
   "ocupado": [
     {
       "inicio": "2026-10-04",
@@ -24,8 +24,8 @@
   ],
   "livres_proximos": [
     {
-      "inicio": "2026-09-30",
-      "noites": 4,
+      "inicio": "2026-10-01",
+      "noites": 3,
       "fim": "2026-10-04"
     },
     {
@@ -50,15 +50,15 @@
     },
     {
       "inicio": "2027-01-27",
-      "noites": 261,
-      "fim": "2027-10-15",
+      "noites": 262,
+      "fim": "2027-10-16",
       "aberto": true
     }
   ],
   "oferta_relampago": [
     {
-      "inicio": "2026-09-30",
-      "noites": 4,
+      "inicio": "2026-10-01",
+      "noites": 3,
       "fim": "2026-10-04"
     }
   ]
