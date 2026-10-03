@@ -1,5 +1,5 @@
 {
-  "atualizado_em": "2026-10-02T09:40:41.487Z",
+  "atualizado_em": "2026-10-03T06:32:10.872Z",
   "ocupado": [
     {
       "inicio": "2026-10-04",
@@ -24,8 +24,8 @@
   ],
   "livres_proximos": [
     {
-      "inicio": "2026-10-02",
-      "noites": 2,
+      "inicio": "2026-10-03",
+      "noites": 1,
       "fim": "2026-10-04"
     },
     {
@@ -50,8 +50,8 @@
     },
     {
       "inicio": "2027-01-27",
-      "noites": 263,
-      "fim": "2027-10-17",
+      "noites": 264,
+      "fim": "2027-10-18",
       "aberto": true
     }
   ],
