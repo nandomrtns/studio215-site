@@ -123,3 +123,95 @@ if (waFloat && secoesComWhatsapp.length && 'IntersectionObserver' in window) {
   }, { threshold: 0.15 });
   secoesComWhatsapp.forEach((el) => obs.observe(el));
 }
+
+// Perguntas frequentes: uma aberta por vez, com a altura animada ao abrir e
+// fechar. O <details> continua nativo — sem JS funciona igual, só sem movimento.
+// A lista reserva a altura da maior resposta aberta, assim a seção de contato
+// logo abaixo não sobe e desce a cada clique.
+const faqList = document.querySelector('.faq-list');
+if (faqList) {
+  const faqItems = [...faqList.querySelectorAll('details')];
+  const FAQ_EASE = 'cubic-bezier(0.22, 1, 0.36, 1)'; // mesmo --ease-smooth do CSS
+  const FAQ_OPEN_MS = 460;
+  const FAQ_CLOSE_MS = 340;
+  faqList.classList.add('is-enhanced');
+
+  // Mede a altura do item aberto ou fechado (no mesmo frame, sem pintar).
+  const alturaCom = (d, aberto) => {
+    d.open = aberto;
+    return d.getBoundingClientRect().height;
+  };
+
+  // Altura da lista toda fechada + a maior resposta (só uma abre por vez).
+  const reservarAltura = () => {
+    if (faqItems.some((d) => d.classList.contains('is-animating'))) {
+      setTimeout(reservarAltura, FAQ_OPEN_MS);
+      return;
+    }
+    const estados = faqItems.map((d) => d.open);
+    let fechada = 0;
+    let maiorResposta = 0;
+    faqItems.forEach((d) => {
+      const h = alturaCom(d, false);
+      fechada += h;
+      maiorResposta = Math.max(maiorResposta, alturaCom(d, true) - h);
+    });
+    faqItems.forEach((d, i) => { d.open = estados[i]; });
+    faqList.style.minHeight = `${Math.ceil(fechada + maiorResposta)}px`;
+  };
+
+  // Interrompível: se o clique chega no meio do movimento, parte da altura atual.
+  const animarItem = (d, abrir) => {
+    const resposta = d.querySelector('p');
+    d.classList.toggle('is-open', abrir);
+    if (reduceMotion.matches) { d.open = abrir; return; }
+
+    const inicio = d.getBoundingClientRect().height;
+    d.getAnimations().forEach((a) => a.cancel());
+    resposta.getAnimations().forEach((a) => a.cancel());
+    const fim = alturaCom(d, abrir);
+    d.open = true; // a resposta precisa existir na tela enquanto fecha
+    d.classList.add('is-animating');
+
+    const mov = d.animate(
+      [{ height: `${inicio}px` }, { height: `${fim}px` }],
+      { duration: abrir ? FAQ_OPEN_MS : FAQ_CLOSE_MS, easing: FAQ_EASE }
+    );
+    if (abrir) {
+      resposta.animate(
+        [{ opacity: 0, transform: 'translateY(-6px)' }, { opacity: 1, transform: 'none' }],
+        { duration: FAQ_OPEN_MS, delay: 70, easing: FAQ_EASE, fill: 'backwards' }
+      );
+    } else {
+      resposta.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, easing: 'ease-out', fill: 'forwards' });
+    }
+    mov.onfinish = () => {
+      d.classList.remove('is-animating');
+      if (!abrir) {
+        d.open = false;
+        resposta.getAnimations().forEach((a) => a.cancel());
+      }
+    };
+  };
+
+  faqItems.forEach((d) => {
+    d.classList.toggle('is-open', d.open);
+    d.querySelector('summary').addEventListener('click', (e) => {
+      e.preventDefault();
+      const abrir = !d.classList.contains('is-open');
+      if (abrir) faqItems.forEach((outro) => { if (outro !== d && outro.classList.contains('is-open')) animarItem(outro, false); });
+      animarItem(d, abrir);
+    });
+    // O "Localizar" do navegador abre o <details> sozinho: só sincroniza o "+".
+    d.addEventListener('toggle', () => {
+      if (d.open && !d.classList.contains('is-open') && !d.classList.contains('is-animating')) d.classList.add('is-open');
+    });
+  });
+
+  document.fonts.ready.then(reservarAltura);
+  let faqResize;
+  window.addEventListener('resize', () => {
+    clearTimeout(faqResize);
+    faqResize = setTimeout(reservarAltura, 150);
+  });
+}

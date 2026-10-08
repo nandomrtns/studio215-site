@@ -11,6 +11,22 @@ const API_BASE = 'https://studio215-booking-production.up.railway.app';
 // token do outro faz todo pagamento falhar.
 const MP_PUBLIC_KEY = 'APP_USR-4092fb94-546e-49a4-bf33-d7db716ee6e9';
 const PREVIEW_MODE = new URLSearchParams(window.location.search).has('preview');
+
+// O SDK e o security.js do Mercado Pago só carregam no ?preview=1, o único modo
+// em que existe pagamento. Antes vinham pra todo visitante e travavam o celular
+// por ~1,8 s, derrubando a nota de velocidade que o Google usa no ranking.
+// O security.js gera window.MP_DEVICE_SESSION_ID (antifraude) e lê o atributo
+// view="checkout" da própria tag.
+if (PREVIEW_MODE) {
+  [['https://sdk.mercadopago.com/js/v2'], ['https://www.mercadopago.com/v2/security.js', 'checkout']]
+    .forEach(([src, view]) => {
+      const s = document.createElement('script');
+      s.src = src;
+      if (view) s.setAttribute('view', view);
+      document.head.appendChild(s);
+    });
+}
+
 const MONTHS_SHOWN = 2;
 const MAX_MONTH_OFFSET = 10; // janela navegável de 12 meses (offset + MONTHS_SHOWN)
 const AVAILABILITY_WINDOW_DAYS = 380; // cobre a janela de 12 meses inteira numa fetch só

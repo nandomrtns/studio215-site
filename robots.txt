@@ -1,0 +1,7 @@
+# Studio 215 — www.studio215poa.com.br
+# Tudo liberado. A pasta social/ não pode ser bloqueada: é de onde a API do
+# Instagram baixa as imagens dos posts agendados.
+User-agent: *
+Allow: /
+
+Sitemap: https://www.studio215poa.com.br/sitemap.xml
