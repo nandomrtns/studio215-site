@@ -1,9 +1,10 @@
 name: Publicar no Instagram
 
-# Confere a fila a cada 10 minutos (aos :01, :11, :21, :31, :41, :51) e publica o que
-# estiver aprovado e vencido. Os posts são marcados para :40 → saem na rodada de :41.
-# Era de hora em hora, mas em set/2026 o GitHub rodou o cron só a cada 2–6 h (ele atrasa
-# e descarta execuções agendadas sob carga). Com mais rodadas, alguma passa perto do horário.
+# O cron abaixo pede uma rodada a cada 10 min, mas o GitHub entrega quando quer: em
+# set–out/2026 rodou a cada ~5 h, com buracos de até 14 h, e os posts saíam horas atrasados.
+# Por isso cada rodada faz PLANTÃO: publica o que venceu e, se houver post aprovado nas
+# próximas 20 h, fica esperando e publica no minuto marcado. Um job vive no máximo 6 h, então
+# perto de 5h30 ele dispara uma nova rodada (workflow_dispatch) que continua o plantão.
 on:
   schedule:
     - cron: "1-59/10 * * * *"
@@ -13,44 +14,80 @@ on:
         description: "Slug do post para publicar agora, ignorando o horário (vazio = fluxo normal)"
         required: false
         default: ""
+      antecedencia:
+        description: "Teste do plantão: antecedência em segundos (vazio = 72000, 20 h)"
+        required: false
+        default: ""
 
 permissions:
   contents: write
+  actions: write # para o plantão disparar a rodada seguinte
 
+# Uma rodada por vez (evita post duplicado). O --forcar tem fila própria para não ficar
+# preso atrás de um plantão de horas.
 concurrency:
-  group: instagram
+  group: instagram-${{ inputs.forcar && 'forcar' || 'fila' }}
   cancel-in-progress: false
 
 jobs:
   publicar:
     runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+      IG_USER_ID: ${{ secrets.IG_USER_ID }}
+      GH_TOKEN: ${{ github.token }}
+      FORCAR: ${{ inputs.forcar }}
+      JANELA: 19800       # 5h30: quanto esta rodada pode esperar antes de passar o plantão
+      ANTECEDENCIA: ${{ inputs.antecedencia || 72000 }} # 20h: post mais longe que isso fica para uma rodada futura
     steps:
+      # ref: main, não o commit que disparou: uma rodada que ficou na fila precisa ver os
+      # publicado.json que a anterior acabou de gravar.
       - uses: actions/checkout@v4
+        with:
+          ref: main
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Publicar posts vencidos
-        env:
-          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
-          IG_USER_ID: ${{ secrets.IG_USER_ID }}
-          FORCAR: ${{ inputs.forcar }}
+      - name: Publicar (e ficar de plantão até o próximo post)
         run: |
-          if [ -n "$FORCAR" ]; then
-            node social/scripts/publicar.mjs --forcar "$FORCAR"
-          else
-            node social/scripts/publicar.mjs
-          fi
-
-      # Roda mesmo se um post falhou, pra não perder o registro dos que saíram.
-      - name: Registrar o que foi publicado
-        if: always()
-        run: |
-          git add social/fila/*/publicado.json 2>/dev/null || true
-          git diff --cached --quiet && exit 0
           git config user.name "studio215-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Instagram: registra posts publicados"
-          for i in 1 2 3; do git pull --rebase -q && git push -q && exit 0; sleep 5; done
-          exit 1
+
+          # Grava os publicado.json mesmo se um post falhou, pra não perder o registro dos que saíram.
+          registrar() {
+            git add social/fila/*/publicado.json 2>/dev/null || true
+            git diff --cached --quiet && return 0
+            git commit -q -m "Instagram: registra posts publicados"
+            for i in 1 2 3; do git pull --rebase -q && git push -q && return 0; sleep 5; done
+            return 1
+          }
+
+          if [ -n "$FORCAR" ]; then
+            node social/scripts/publicar.mjs --forcar "$FORCAR" || FALHOU=1
+            registrar || FALHOU=1
+            exit ${FALHOU:-0}
+          fi
+
+          FIM=$(( $(date +%s) + JANELA ))
+          while :; do
+            git pull --rebase -q || true # a fila pode ter mudado durante a espera
+            node social/scripts/publicar.mjs || FALHOU=1
+            registrar || FALHOU=1
+
+            ESPERA=$(node social/scripts/publicar.mjs --proximo)
+            if [ -z "$ESPERA" ] || [ "$ESPERA" -gt "$ANTECEDENCIA" ]; then
+              echo "Nenhum post nas próximas $((ANTECEDENCIA / 3600)) h — encerro."
+              break
+            fi
+            if [ $(( $(date +%s) + ESPERA )) -ge "$FIM" ]; then
+              echo "Próximo post em $((ESPERA / 60)) min, além desta rodada — passo o plantão."
+              gh workflow run publicar-instagram.yml --repo "$GITHUB_REPOSITORY" --ref main
+              break
+            fi
+            echo "Próximo post em $((ESPERA / 60)) min — de plantão até lá."
+            sleep $(( ESPERA + 5 ))
+          done
+          exit ${FALHOU:-0}

@@ -5,6 +5,8 @@
 //   node social/scripts/publicar.mjs            publica o que estiver vencido
 //   node social/scripts/publicar.mjs --dry-run  só valida a fila e mostra o que sairia
 //   node social/scripts/publicar.mjs --forcar <slug>  publica esse post agora, ignorando horário
+//   node social/scripts/publicar.mjs --proximo  imprime em quantos segundos sai o próximo post
+//                                               aprovado (nada, se não houver) — usado pelo plantão
 //
 // Env: IG_ACCESS_TOKEN, IG_USER_ID (opcional, padrão "me"), SITE_URL, GRAPH_VERSION
 
@@ -29,6 +31,7 @@ const VIDEO = [".mp4", ".mov"];
 const args = process.argv.slice(2);
 const DRY_RUN = args.includes("--dry-run");
 const FORCAR = args.includes("--forcar") ? args[args.indexOf("--forcar") + 1] : null;
+const PROXIMO = args.includes("--proximo");
 
 async function existe(caminho) {
   try {
@@ -202,6 +205,15 @@ async function main() {
   if (erros.length) {
     console.error("Fila com problemas:\n  " + erros.join("\n  "));
     process.exit(1);
+  }
+
+  if (PROXIMO) {
+    const futuros = posts
+      .filter(({ post, publicado }) => !publicado && post.aprovado === true)
+      .map(({ post }) => Date.parse(post.publicar_em))
+      .filter((t) => t > agora);
+    if (futuros.length) console.log(Math.ceil((Math.min(...futuros) - agora) / 1000));
+    return;
   }
 
   for (const p of posts)
