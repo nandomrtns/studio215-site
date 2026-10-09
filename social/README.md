@@ -18,6 +18,7 @@ O GitHub Actions confere esta fila a cada 10 minutos e publica o que venceu.
    ```
 
    - `tipo`: `feed` (1 JPEG), `carrossel` (2 a 10), `story` (cada arquivo vira um story, sem legenda) ou `reel` (1 vídeo).
+   - `capa` (só reel, opcional): JPEG 1080×1920 na mesma pasta, vira a imagem do Reels no feed e no grid. Gerada por `instagram/reels/render.py` junto com o `reel.mp4`.
    - `publicar_em`: sempre com fuso (`-03:00`).
    - `aprovado`: **só vira `true` depois do OK do Nando.** Sem isso o post nunca sai.
    - Mídia de imagem precisa ser **JPEG** — a API não aceita PNG.

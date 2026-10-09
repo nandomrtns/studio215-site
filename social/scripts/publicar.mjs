@@ -92,6 +92,11 @@ async function validar({ slug, dir, post }) {
     erros.push(`carrossel precisa de 2 a 10 arquivos (tem ${midia.length})`);
   if (["feed", "reel"].includes(post.tipo) && midia.length !== 1)
     erros.push(`${post.tipo} leva exatamente 1 arquivo (use "carrossel" para vários)`);
+  if (post.capa) {
+    if (post.tipo !== "reel") erros.push(`"capa" só vale para reel`);
+    if (!IMAGEM.includes(extname(post.capa).toLowerCase())) erros.push(`capa precisa ser JPEG: ${post.capa}`);
+    if (!(await existe(join(dir, post.capa)))) erros.push(`capa não encontrada: ${post.capa}`);
+  }
   if (post.tipo !== "story" && (post.legenda || "").length > 2200) erros.push("legenda passa de 2.200 caracteres");
   if (post.tipo === "story" && post.legenda) erros.push("story não tem legenda na API — remova o campo legenda");
 
@@ -118,14 +123,15 @@ async function graph(metodo, caminho, params = {}) {
 }
 
 // Vídeo (e às vezes carrossel) processa de forma assíncrona: só dá pra publicar em FINISHED.
+// Reels de ~20 s costumam levar 1–3 min; o limite é folgado.
 async function esperarContainer(id) {
-  for (let i = 0; i < 60; i++) {
+  for (let i = 0; i < 120; i++) {
     const { status_code } = await graph("GET", id, { fields: "status_code" });
     if (status_code === "FINISHED") return;
     if (status_code === "ERROR" || status_code === "EXPIRED") throw new Error(`container ${id} ficou ${status_code}`);
     await new Promise((r) => setTimeout(r, 5000));
   }
-  throw new Error(`container ${id} não terminou de processar em 5 minutos`);
+  throw new Error(`container ${id} não terminou de processar em 10 minutos`);
 }
 
 function paramsDeMidia(arquivo) {
@@ -142,7 +148,8 @@ async function conferirUrls(urls) {
 
 async function publicar({ slug, post }) {
   const urls = post.midia.map((a) => urlPublica(slug, a));
-  await conferirUrls(urls);
+  const capa = post.capa ? urlPublica(slug, post.capa) : null;
+  await conferirUrls(capa ? [...urls, capa] : urls);
 
   let containerId;
   if (post.tipo === "carrossel") {
@@ -159,10 +166,13 @@ async function publicar({ slug, post }) {
       caption: post.legenda || "",
     }));
   } else if (post.tipo === "reel") {
+    // "capa" (JPEG 1080x1920) vira a imagem do Reels no feed e no grid do perfil.
     ({ id: containerId } = await graph("POST", `${IG_USER}/media`, {
       media_type: "REELS",
       video_url: urls[0],
       caption: post.legenda || "",
+      share_to_feed: "true",
+      ...(capa ? { cover_url: capa } : {}),
     }));
   } else if (post.tipo === "story") {
     // Cada arquivo vira um story separado, na ordem da lista.
