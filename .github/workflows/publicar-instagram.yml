@@ -4,7 +4,8 @@ name: Publicar no Instagram
 # set–out/2026 rodou a cada ~5 h, com buracos de até 14 h, e os posts saíam horas atrasados.
 # Por isso cada rodada faz PLANTÃO: publica o que venceu e, se houver post aprovado nas
 # próximas 20 h, fica esperando e publica no minuto marcado. Um job vive no máximo 6 h, então
-# perto de 5h30 ele dispara uma nova rodada (workflow_dispatch) que continua o plantão.
+# ao fim de 5h30 de espera (nunca antes) ele dispara uma nova rodada (workflow_dispatch) que
+# continua o plantão.
 on:
   schedule:
     - cron: "1-59/10 * * * *"
@@ -82,12 +83,21 @@ jobs:
               echo "Nenhum post nas próximas $((ANTECEDENCIA / 3600)) h — encerro."
               break
             fi
-            if [ $(( $(date +%s) + ESPERA )) -ge "$FIM" ]; then
+            RESTA=$(( FIM - $(date +%s) ))
+            if [ "$RESTA" -le 60 ]; then
+              # Só passa o plantão no fim da janela. Passar antes fazia cada rodada nova passar de
+              # novo na hora: um laço de centenas de rodadas por hora sempre que o próximo post
+              # estava entre 5h30 e 20 h de distância (2.449 rodadas em 14–15/10/2026).
               echo "Próximo post em $((ESPERA / 60)) min, além desta rodada — passo o plantão."
               gh workflow run publicar-instagram.yml --repo "$GITHUB_REPOSITORY" --ref main
               break
             fi
-            echo "Próximo post em $((ESPERA / 60)) min — de plantão até lá."
-            sleep $(( ESPERA + 5 ))
+            # Dorme até o post ou até o fim da janela, o que vier antes, revendo a fila a cada 30 min
+            # (um post aprovado depois pode sair antes do que este plantão esperava).
+            SONO=$(( ESPERA + 5 ))
+            if [ "$SONO" -gt "$RESTA" ]; then SONO=$RESTA; fi
+            if [ "$SONO" -gt 1800 ]; then SONO=1800; fi
+            echo "Próximo post em $((ESPERA / 60)) min — de plantão (revejo a fila em $((SONO / 60)) min)."
+            sleep "$SONO"
           done
           exit ${FALHOU:-0}
