@@ -215,3 +215,13 @@ if (faqList) {
     faqResize = setTimeout(reservarAltura, 150);
   });
 }
+
+// Avaliações: a faixa desacelera sob o mouse para dar tempo de ler. Usa playbackRate porque
+// ele continua da posição atual; trocar animation-duration no :hover recalcula o progresso
+// da animação e os cards saltam para outro lugar.
+const faixaAvaliacoes = document.querySelector('.marquee');
+const animacaoFaixa = faixaAvaliacoes?.querySelector('.marquee-track')?.getAnimations()[0];
+if (animacaoFaixa && window.matchMedia('(hover: hover)').matches) {
+  faixaAvaliacoes.addEventListener('pointerenter', () => animacaoFaixa.updatePlaybackRate(100 / 260));
+  faixaAvaliacoes.addEventListener('pointerleave', () => animacaoFaixa.updatePlaybackRate(1));
+}

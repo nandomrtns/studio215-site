@@ -551,14 +551,9 @@ figcaption {
 
 .marquee-track {
   display: flex;
-  gap: 20px;
   width: max-content;
-  padding: 4px 32px 48px;
+  padding: 4px 0 48px;
   animation: marquee-scroll 100s linear infinite;
-}
-
-.marquee:hover .marquee-track {
-  animation-duration: 260s;
 }
 
 @keyframes marquee-scroll {
@@ -568,6 +563,9 @@ figcaption {
 
 .review-card {
   flex: 0 0 320px;
+  /* margem em cada card, e não gap na faixa: a faixa precisa ter exatamente o dobro
+     da lista para o -50% da animação fechar o ciclo sem salto */
+  margin-right: 20px;
   background: var(--cream-2);
   border-radius: 12px;
   padding: 24px;
